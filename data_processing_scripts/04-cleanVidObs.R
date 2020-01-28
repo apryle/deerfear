@@ -10,7 +10,7 @@ str(purevideos)
 purevideos$DeerID <- as.factor(purevideos$DeerID)
 
 # Remove all exact duplicates
-purevideos2 <- purevideos[!(duplicated(purevideos) | duplicated(purevideos, fromLast = TRUE)), ]
+purevideos2 <- purevideos[!duplicated(purevideos[,c("DeerID","Date", "Time")]),]
 nrow(purevideos2)
 nrow(purevideos) # this process rmvd about 1200 duplicates
 
