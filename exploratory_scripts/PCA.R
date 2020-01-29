@@ -5,9 +5,11 @@ library(matlab)
 library(ggplot2)
 library(data.table)
 library(reshape2)
+library(reshape)
 
 setwd("C:/Users/Apryle D. Craig/Documents/PhD/Video_Analysis/Incubator/deerfear/data/stages_of_processing/results_of_step_06_countsToLabels")
-avlabs <- readRDS("accVidLabs.dat")     
+list.files()
+avlabs <- readRDS("accVidLabs.dat")
 
 options(digits.secs = 3)
 options(digits = 3)
@@ -15,6 +17,12 @@ options(digits = 3)
 head(avlabs)
 tail(avlabs)
 str(avlabs)
+
+
+#how many acc records per deerdate?
+table(avlabs$DeerDate)
+set1 <- data.frame(table(avlabs$DeerDate))
+summary(set1)
 #############################################
 # reduce to only look at pure epochs for now
 
@@ -32,7 +40,7 @@ nrow(pure)
 str(pure)
 
 # drop the unused levels to see how many deer we are 
-pure$DeerID<-factor(pure$DeerID)
+pure$deerID<-factor(pure$deerID)
 pure$DeerDate<-factor(pure$DeerDate)
 pure$behaviorcat<-factor(pure$behaviorcat)
 
@@ -41,24 +49,32 @@ tail(pure)
 str(pure)
 nrow(pure)
 
-# sort by DeerID and date time
-pure <- pure[order(pure$DeerID, pure$datetimemil), ]
+table(pure$DeerDate)
+summary(pure$DeerDate)
 
-table(pure$DeerDate) # why do some of these have 204? Some have 97?
-# NW1MF4_20150116_153346 has 85
-# NW1MF4_20150117_120043 has 201
+summary(pure$behaviorcat)
+
+# sort by DeerID and date time
+pure <- pure[order(pure$deerID, pure$datetimemil), ]
 
 ################ plot one deer
 
-purevideoACC <- pure
+purevidACC <- pure
 
-OneDeer <- purevidACC[which(purevidACC$DeerID =="NW1MF11" &  
-                                    purevidACC$datetimemil > "2014-01-20 07:30:00" &
-                                    purevidACC$datetimemil < "2014-01-20 07:31:00"), ]
+mydeer <- "NW1MF11"
+stdt <- "2014-01-20 07:30:00"
+enddt <- "2014-01-20 07:31:00"
 
-plot(OneDeer$accx~OneDeer$datetimemil, type="l", col="blue")
+OneDeer <- purevidACC[which(purevidACC$deerID == mydeer &  
+                                    purevidACC$datetimemil > stdt &
+                                    purevidACC$datetimemil < enddt), ]
+
+accmax <- max(c(OneDeer$accx, OneDeer$accy, OneDeer$accz))
+accmin <- min(c(OneDeer$accx, OneDeer$accy, OneDeer$accz))
+plot(OneDeer$accx~OneDeer$datetimemil, type="l", col="blue", ylim = c(accmin, accmax))
 lines(OneDeer$accy~OneDeer$datetimemil, type="l", col="red")
 lines(OneDeer$accz~OneDeer$datetimemil, type="l", col="gray")
+title(main = paste("One Deer", OneDeer$deerID, "here"))
 
 ######### pca prep########################################
 
@@ -66,63 +82,88 @@ head(purevidACC)
 
 #how many acc records per deerdate?
 table(purevidACC$DeerDate)
+set <- data.frame(table(purevidACC$DeerDate))
+summary(set)
 
-#make all epochs equal to 101 acc records
+#make all video epochs equal to 101 acc records
 purevidACCequal <- by(purevidACC, purevidACC$DeerDate, head, n=101)
-purevidACCequal2<- Reduce(rbind, purevidACCequal)
+str(purevidACCequal)
+purevidACCequal2 <- rbindlist(purevidACCequal, fill=TRUE)
 head(purevidACCequal2)
+
+#how many acc records per deerdate?
 table(purevidACCequal2$DeerDate)
+set2 <- data.frame(table(purevidACCequal2$DeerDate))
+summary(set2) 
+summary(set) # contrast with previous step
+
+nrow(purevidACCequal2)
+
 purevidACC <- purevidACCequal2
 
-
 ######### PCA on raw data #######################
-dim(purevidACC[, 9:11])
-head(purevidACC[, 9:11])
-
-dim(purevidACC)
-head(purevidACC)
-
 table(purevidACC$DeerDate)
 purevidACC$DeerDate <- as.factor(purevidACC$DeerDate)
 head(purevidACC)
-idandbehav <- purevidACC[,c(1,6)]
-head(idandbehav)
-nrow(idandbehav)
-deerdate <- unique(idandbehav)
-nrow(deerdate)
-levels(purevidACC$DeerDate)
-length(levels(purevidACC$DeerDate))
-forPCA <- purevidACC[, 9:11]
+
+nrow(purevidACC)
+
+forPCA <- purevidACC[, c("DeerDate", 
+                         "ACCSeconds", 
+                         "accx", "accy", "accz",
+                         "behaviorcat")]
 
 head(forPCA)
 str(forPCA)
-PCAmatrix <- as.matrix(forPCA)
-str(PCAmatrix)
-head(PCAmatrix)
-dim(PCAmatrix)
-#reshape
-library(dplyr)
-library(tidyr)
-library(matlab)
+nrow(forPCA)
 
-nrow(PCAmatrix)/101 
+# reshape for PCA
+melted <- melt(forPCA, id=c(("DeerDate"), "ACCSeconds", "behaviorcat"),
+               measure.vars = c("accx", "accy", "accz"))
+melted[variable=="accz", ]
+purevidACC[purevidACC$DeerDate=="NW1MF11_20140120_073053", c("ACCSeconds", 
+                                                             "accx", "accy", "accz")]
 
-widePCA <- matlab::reshape(PCAmatrix, c(101, 1604, 3))     
-head(widePCA)
-widePCA2 <- aperm(widePCA, c(2, 1, 3))
-dim(widePCA2)
+dim(melted)
+head(melted)
+melted$DeerDate <- as.factor(melted$DeerDate )
+unique(melted$DeerDate)
 
-widePCA3 <- matlab::reshape(widePCA2, c(1604, 303))    
+widePCA3 <- melted
 dim(widePCA3)
-
-widePCA3 <- as.data.frame(widePCA3)
-head(widePCA3)
-widePCA3$DeerDate <- levels(purevidACC$DeerDate)
-sum(deerdate[ , 1] == widePCA3$DeerDate)
-widePCA3$behavior <- deerdate[ , 2]
-
 head(widePCA3)
 
+
+#####different way to reshape
+head(forPCA)
+str(forPCA)
+nrow(forPCA)
+meltIt <- melt(forPCA, id.vars=c("DeerDate", "ACCSeconds"))
+head(meltIt)
+dcast(meltIt, DeerDate~variable)
+dcast(meltIt, DeerDate~ACCSeconds)
+
+casted <- cast(melted, DeerDate~value)
+summary(casted)
+dim(casted)
+head(casted)
+
+casted2 <- cast(melted, DeerDate~ACCSeconds)
+head(casted2)
+nrow(casted2)
+
+nrow(melted)/303
+seq1 <- rep(1:303)
+seq2 <- rep(seq1, times=nrow(melted)/303)
+length(seq2)
+
+melted$seq <- seq2
+
+dcast(DeerDate + seq ~ value, data = melted)
+
+castedtry <- cast(melted, DeerDate~seq)  ########## this one works without labels
+dim(castedtry)
+summary(castedtry)
 #################################################
 
 pca <- prcomp(widePCA3[, 1:303],
