@@ -1,6 +1,12 @@
 library(psd)
 
-setwd("C:/Users/Apryle D. Craig/Documents/PhD/Video_Analysis/Incubator/deerfear/data/stages_of_processing/results_of_step_03")
-list.files()
-allDeer <- readRDS("allDeerACC.dat")
+set.seed(0)
+N <-32
+n<- 0:(N-1)
+w <- rnorm(1:N)
+f1 <- 0.4
+A1 <- 2
+s <- A1*sin(2*pi*f1*n)
+x <- s + w
 
+plot(x~n)
