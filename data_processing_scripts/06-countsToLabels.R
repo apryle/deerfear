@@ -47,7 +47,7 @@ accvid[which(accvid$DurationForaging == 0 &
                accvid$DurationBedded == 10 &
                accvid$DurationGrooming == 0 &
                accvid$DurationTravel == 0 &
-               accvid$DurationVigilance == 10), c("behaviorcat")] <- "BeddedHeadNOTRum" # head up could be vig, sleeping, swallow
+               accvid$DurationVigilance == 10), c("behaviorcat")] <- "BeddedHeadUpNOTRum" # head up could be vig, sleeping, swallow
 # BeddedHeadUpKnown
 accvid[which(accvid$DurationForaging == 0 &
                accvid$DurationBedded == 9 &

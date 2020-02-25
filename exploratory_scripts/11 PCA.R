@@ -1,40 +1,52 @@
-library(ggplot2)
+library(caret)
+library(tidyverse)
+library(glmnet)
+library(recipes)
+library("recipes")
 
-# start with running and vigilant only
-widePCA4 # this is creaed in file PCA of spectrums.R
-table(widePCA4$behaviorcat) # this should have only run and vigilant
-widePCA4$behaviorcat <- factor(widePCA4$behaviorcat)
+# isolate the predictors from the response and categories, etc.
+trainData <- trainingdeer[, 6:(ncol(trainingdeer)-1)]
+justPredAndResp <- trainingdeer[, 6:(ncol(trainingdeer))]
+trainingdeer$collapsedBehaviors <- as.factor(trainingdeer$collapsedBehaviors)
+trueBehavs <- trainingdeer$collapsedBehaviors
 
-# select 1 training deer and 1 testing deer
-table(widePCA4$DeerID)
-table(widePCA4$behaviorcat) # this should have only run and vigilant
+#######################
 
-traindeer <- "NW1WF12" # 126 observations 
-testdeer <- "WP2MM6" # 93 observations
 
-# subset to do pca on just training deer
-training <-widePCA4[widePCA4$DeerID==traindeer, ]
-dim(training)
-training$behaviorcat
+deer_recipe <- recipe(collapsedBehaviors ~ ., data = justPredAndResp) %>%
+  step_pca(all_predictors(), # not sure if I need to specify predictors here
+           options = list(center = FALSE, scale. = FALSE), 
+           num_comp = 10)
 
-# subset for testing deer
-testing <-widePCA4[widePCA4$DeerID==testdeer, ]
-dim(testing)
-testing$behaviorcat
-table(testing$behaviorcat)
+deer_ctrl <- trainControl(method = "cv", number = 3)
 
-# Prep training data for PCA 
-min(training[, 6:ncol(training)]) # check to see if there are zeros
-trainingplus1 <- training[, 6:ncol(training)] + .01 # add 1 because cannot take log of 0
-min(trainingplus1)
+set.seed(888)
+deer_pca <- train(deer_recipe, justPredAndResp,
+                 method = "multinom", 
+                 trControl = deer_ctrl)
 
-logTrainDataX <- log(trainingplus1) # the predictors only. Power spectrum
-TrainDataY <- testing$behaviorcat
+summary(deer_pca)
+
+deer_pca$results
+
+predBehav <- predict(deer_pca, trainData, type = "raw")
+
+table(trueBehavs, predBehav)
+
+
+
+
+
+
+
+
+
+
 
 ######## PCA for training data
 train.pca <- prcomp(logTrainDataX
-                  #, center = TRUE, scale = TRUE
-                  )
+                    #, center = TRUE, scale = TRUE
+)
 summary(train.pca)
 str(train.pca)
 
